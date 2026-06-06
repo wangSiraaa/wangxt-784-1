@@ -226,6 +226,104 @@
                 </div>
             </div>
         </div>
+
+        <div id="zoneDrawerOverlay" class="drawer-overlay" style="display:none;">
+            <div id="zoneDrawer" class="zone-drawer">
+                <div class="drawer-header">
+                    <button class="drawer-back-btn" onclick="closeZoneDrawer()">← 返回</button>
+                    <h3 id="drawerZoneName">分区详情</h3>
+                    <button class="drawer-close-btn" onclick="closeZoneDrawer()">&times;</button>
+                </div>
+                
+                <div class="drawer-tabs">
+                    <button class="drawer-tab active" data-tab="info">分区信息</button>
+                    <button class="drawer-tab" data-tab="booking">预约</button>
+                    <button class="drawer-tab" data-tab="waitlist">候补</button>
+                    <button class="drawer-tab" data-tab="checkin">入场核验</button>
+                </div>
+                
+                <div class="drawer-content">
+                    <div id="drawerTab-info" class="drawer-tab-content active">
+                        <div id="zoneInfoSection"></div>
+                    </div>
+                    
+                    <div id="drawerTab-booking" class="drawer-tab-content">
+                        <div id="bookingFormSection">
+                            <h4>预约信息</h4>
+                            <div class="form-row">
+                                <label>岩壁分区：</label>
+                                <span id="drawerBookingZone"></span>
+                            </div>
+                            <div class="form-row">
+                                <label>选择时段：</label>
+                                <select id="drawerTimeSlot">
+                                    <option value="">请选择时段</option>
+                                </select>
+                            </div>
+                            <div class="form-row">
+                                <label>装备尺码：</label>
+                                <select id="drawerEquipmentSize">
+                                    <option value="">请选择</option>
+                                </select>
+                            </div>
+                            <div class="form-row">
+                                <label>培训等级：</label>
+                                <select id="drawerTrainingLevel">
+                                    <option value="">请选择</option>
+                                    <option value="beginner">初级（体验区）</option>
+                                    <option value="intermediate">中级（难度区）</option>
+                                    <option value="advanced">高级（先锋区）</option>
+                                </select>
+                            </div>
+                            <div class="form-row" id="drawerGuardianRow" style="display:none;">
+                                <label>监护人确认：</label>
+                                <select id="drawerGuardianConfirm">
+                                    <option value="false">未确认</option>
+                                    <option value="true">已确认</option>
+                                </select>
+                            </div>
+                            <div class="form-actions">
+                                <button id="drawerSubmitBooking" class="btn-primary">提交预约</button>
+                            </div>
+                            <div id="drawerBookingResult" class="result-message"></div>
+                        </div>
+                    </div>
+                    
+                    <div id="drawerTab-waitlist" class="drawer-tab-content">
+                        <div id="waitlistSection">
+                            <h4>候补名单</h4>
+                            <div class="form-row">
+                                <label>选择时段：</label>
+                                <select id="drawerWaitlistSlot">
+                                    <option value="">请选择时段</option>
+                                </select>
+                            </div>
+                            <div id="drawerWaitlistList"></div>
+                            <div class="form-actions">
+                                <button id="drawerAddWaitlist" class="btn-primary">加入候补</button>
+                            </div>
+                            <div id="drawerWaitlistResult" class="result-message"></div>
+                        </div>
+                    </div>
+                    
+                    <div id="drawerTab-checkin" class="drawer-tab-content">
+                        <div id="checkinSection">
+                            <h4>入场核验</h4>
+                            <div class="form-row">
+                                <label>选择预约：</label>
+                                <select id="drawerCheckinBooking">
+                                    <option value="">请选择预约记录</option>
+                                </select>
+                            </div>
+                            <div class="form-actions">
+                                <button id="drawerDoCheckin" class="btn-primary">确认入场</button>
+                            </div>
+                            <div id="drawerCheckinResult" class="result-message"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script src="js/dataStore.js"></script>

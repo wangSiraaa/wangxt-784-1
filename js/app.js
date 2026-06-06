@@ -3,6 +3,10 @@ const App = {
     selectedDate: null,
     selectedZoneId: null,
     selectedSlotId: null,
+    drawerZoneId: null,
+    drawerDate: null,
+    drawerSlotId: null,
+    previousScrollPosition: 0,
 
     init() {
         DataStore.init();
@@ -14,6 +18,7 @@ const App = {
         this.renderCheckinSelects();
         this.renderDataOverview();
         this.bindEvents();
+        this.bindDrawerEvents();
     },
 
     bindNavEvents() {
@@ -119,11 +124,7 @@ const App = {
         
         grid.querySelectorAll('.time-slot').forEach(slot => {
             slot.addEventListener('click', () => {
-                if (slot.classList.contains('full')) {
-                    this.showWaitlistOption(slot.dataset.zone, slot.dataset.date, slot.dataset.slot);
-                } else {
-                    this.showBookingForm(slot.dataset.zone, slot.dataset.date, slot.dataset.slot);
-                }
+                this.openZoneDrawer(slot.dataset.zone, slot.dataset.date, slot.dataset.slot);
             });
         });
     },
@@ -711,8 +712,524 @@ const App = {
 
     formatDateISO(date) {
         return date.toISOString().split('T')[0];
+    },
+
+    bindDrawerEvents() {
+        document.querySelectorAll('.drawer-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                this.switchDrawerTab(tab.dataset.tab);
+            });
+        });
+
+        document.getElementById('drawerTimeSlot').addEventListener('change', () => {
+            this.drawerSlotId = document.getElementById('drawerTimeSlot').value;
+        });
+
+        document.getElementById('drawerWaitlistSlot').addEventListener('change', () => {
+            this.renderDrawerWaitlist();
+        });
+
+        document.getElementById('drawerSubmitBooking').addEventListener('click', () => {
+            this.submitDrawerBooking();
+        });
+
+        document.getElementById('drawerAddWaitlist').addEventListener('click', () => {
+            this.addDrawerWaitlist();
+        });
+
+        document.getElementById('drawerDoCheckin').addEventListener('click', () => {
+            this.doDrawerCheckin();
+        });
+
+        document.getElementById('zoneDrawerOverlay').addEventListener('click', (e) => {
+            if (e.target.id === 'zoneDrawerOverlay') {
+                closeZoneDrawer();
+            }
+        });
+    },
+
+    openZoneDrawer(zoneId, date, slotId) {
+        const memberId = document.getElementById('currentMember').value;
+        if (!memberId) {
+            this.showResult('bookingResult', '请先选择会员', 'error');
+            return;
+        }
+
+        this.previousScrollPosition = window.scrollY;
+        this.drawerZoneId = zoneId;
+        this.drawerDate = date;
+        this.drawerSlotId = slotId;
+
+        const zone = DataStore.getZoneById(zoneId);
+        document.getElementById('drawerZoneName').textContent = zone.name;
+
+        this.renderZoneInfo();
+        this.renderDrawerBookingForm();
+        this.renderDrawerWaitlistOptions();
+        this.renderDrawerCheckinOptions();
+
+        if (slotId) {
+            this.switchDrawerTab('booking');
+            document.getElementById('drawerTimeSlot').value = slotId;
+        } else {
+            this.switchDrawerTab('info');
+        }
+
+        document.getElementById('zoneDrawerOverlay').style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+    },
+
+    switchDrawerTab(tabName) {
+        document.querySelectorAll('.drawer-tab').forEach(tab => {
+            tab.classList.toggle('active', tab.dataset.tab === tabName);
+        });
+
+        document.querySelectorAll('.drawer-tab-content').forEach(content => {
+            content.classList.toggle('active', content.id === 'drawerTab-' + tabName);
+        });
+
+        if (tabName === 'waitlist') {
+            this.renderDrawerWaitlist();
+        }
+        if (tabName === 'checkin') {
+            this.renderDrawerCheckinOptions();
+        }
+    },
+
+    renderZoneInfo() {
+        const zone = DataStore.getZoneById(this.drawerZoneId);
+        const memberId = document.getElementById('currentMember').value;
+        const member = DataStore.getMemberById(memberId);
+        const cert = DataStore.getTrainingCertificate(memberId);
+        const consent = DataStore.getGuardianConsent(memberId);
+
+        const riskNames = { 'low': '低风险', 'medium': '中风险', 'high': '高风险' };
+        const levelNames = { 'beginner': '初级', 'intermediate': '中级', 'advanced': '高级' };
+        const levelOrder = { 'beginner': 1, 'intermediate': 2, 'advanced': 3 };
+
+        const memberLevel = cert ? cert.level : null;
+        const memberLevelNum = memberLevel ? levelOrder[memberLevel] : 0;
+        const requiredLevelNum = levelOrder[zone.requiredLevel];
+        const isLevelSufficient = memberLevelNum >= requiredLevelNum;
+        const isCertExpired = DataStore.isCertificateExpired(memberId);
+
+        const isGuardianConfirmed = member.isMinor ? DataStore.isGuardianConfirmed(memberId) : true;
+        const canAccessZone = isLevelSufficient && !isCertExpired && (member.isMinor ? isGuardianConfirmed : true);
+
+        let html = `
+            <div class="zone-info-card">
+                <h4>📋 分区基本信息</h4>
+                <div class="zone-info-row">
+                    <span class="zone-info-label">分区名称</span>
+                    <span class="zone-info-value">${zone.name}</span>
+                </div>
+                <div class="zone-info-row">
+                    <span class="zone-info-label">风险等级</span>
+                    <span class="zone-info-value ${zone.riskLevel}">${riskNames[zone.riskLevel]}</span>
+                </div>
+                <div class="zone-info-row">
+                    <span class="zone-info-label">分区描述</span>
+                    <span class="zone-info-value" style="text-align:right;">${zone.description}</span>
+                </div>
+                <div class="zone-info-row">
+                    <span class="zone-info-label">容量</span>
+                    <span class="zone-info-value">${zone.capacity}人/时段</span>
+                </div>
+            </div>
+
+            <div class="drawer-section">
+                <h4 class="drawer-section-title">🎓 培训等级要求</h4>
+                <div class="zone-info-card" style="margin-bottom:0;">
+                    <div class="zone-info-row">
+                        <span class="zone-info-label">要求等级</span>
+                        <span class="zone-info-value">${levelNames[zone.requiredLevel]}</span>
+                    </div>
+                    <div class="zone-info-row">
+                        <span class="zone-info-label">您的等级</span>
+                        <span class="zone-info-value ${isLevelSufficient && !isCertExpired ? 'valid' : 'expired'}">
+                            ${memberLevel ? levelNames[memberLevel] : '无'}
+                            ${isCertExpired ? ' (已过期)' : ''}
+                        </span>
+                    </div>
+                    <div class="zone-info-row">
+                        <span class="zone-info-label">状态</span>
+                        <span class="zone-info-value ${canAccessZone ? 'valid' : 'expired'}">
+                            ${canAccessZone ? '✅ 符合要求' : '❌ 不符合要求'}
+                        </span>
+                    </div>
+                    ${!canAccessZone ? `
+                    <div class="zone-info-row" style="padding-top:10px;">
+                        <span class="zone-info-label" style="color:#e74c3c;">提示</span>
+                        <span class="zone-info-value" style="color:#e74c3c;font-weight:normal;">
+                            ${isCertExpired ? '您的培训证书已过期，请联系教练续期' : 
+                              !isLevelSufficient ? '您的培训等级未达到该分区要求' : 
+                              !isGuardianConfirmed ? '未成年人需监护人确认后方可预约' : ''}
+                        </span>
+                    </div>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+
+        if (member.isMinor) {
+            html += `
+            <div class="drawer-section">
+                <h4 class="drawer-section-title">👨‍👩‍👧 未成年人监护状态</h4>
+                <div class="zone-info-card" style="margin-bottom:0;">
+                    <div class="zone-info-row">
+                        <span class="zone-info-label">会员身份</span>
+                        <span class="zone-info-value warning">未成年人</span>
+                    </div>
+                    <div class="zone-info-row">
+                        <span class="zone-info-label">监护确认</span>
+                        <span class="zone-info-value ${isGuardianConfirmed ? 'valid' : 'expired'}">
+                            ${isGuardianConfirmed ? '✅ 已确认' : '❌ 未确认'}
+                        </span>
+                    </div>
+                    ${consent && consent.confirmed ? `
+                    <div class="zone-info-row">
+                        <span class="zone-info-label">监护人</span>
+                        <span class="zone-info-value">${consent.guardianName}</span>
+                    </div>
+                    <div class="zone-info-row">
+                        <span class="zone-info-label">确认日期</span>
+                        <span class="zone-info-value">${consent.confirmDate}</span>
+                    </div>
+                    ` : ''}
+                    ${!isGuardianConfirmed ? `
+                    <div class="zone-info-row" style="padding-top:10px;">
+                        <span class="zone-info-label" style="color:#e74c3c;">限制</span>
+                        <span class="zone-info-value" style="color:#e74c3c;font-weight:normal;">
+                            未确认监护人仅可预约体验区
+                        </span>
+                    </div>
+                    ` : ''}
+                </div>
+            </div>
+            `;
+        }
+
+        html += `
+            <div class="drawer-section">
+                <h4 class="drawer-section-title">👟 装备尺码库存</h4>
+                <div class="equipment-stock-grid">
+        `;
+
+        DataStore.getEquipment().forEach(e => {
+            let stockClass = 'in-stock';
+            if (e.stock <= 0) stockClass = 'out-stock';
+            else if (e.stock === 1) stockClass = 'low-stock';
+
+            html += `
+                <div class="equipment-stock-item">
+                    <div class="equip-name">${e.name}</div>
+                    <div class="equip-size">${e.size}码</div>
+                    <div class="equip-stock ${stockClass}">
+                        ${e.stock > 0 ? e.stock + '件' : '无货'}
+                    </div>
+                </div>
+            `;
+        });
+
+        html += `
+                </div>
+            </div>
+
+            <div class="drawer-section">
+                <h4 class="drawer-section-title">🕐 今日可预约时段 (${this.drawerDate})</h4>
+                <div class="time-slots-list">
+        `;
+
+        const slots = DataStore.getTimeSlots();
+        slots.forEach(slot => {
+            const remaining = DataStore.getSlotCapacity(this.drawerZoneId, this.drawerDate, slot.id);
+            const isFull = remaining <= 0;
+            const zone = DataStore.getZoneById(this.drawerZoneId);
+
+            html += `
+                <div class="time-slot-item" onclick="App.selectDrawerSlot('${slot.id}')">
+                    <span class="slot-time">${slot.time} (${slot.name})</span>
+                    <span class="slot-capacity ${isFull ? 'full' : ''}">
+                        ${isFull ? '已满' : `剩余 ${remaining}/${zone.capacity}`}
+                    </span>
+                </div>
+            `;
+        });
+
+        html += `
+                </div>
+            </div>
+        `;
+
+        document.getElementById('zoneInfoSection').innerHTML = html;
+    },
+
+    selectDrawerSlot(slotId) {
+        this.drawerSlotId = slotId;
+        document.getElementById('drawerTimeSlot').value = slotId;
+        document.getElementById('drawerWaitlistSlot').value = slotId;
+        this.switchDrawerTab('booking');
+    },
+
+    renderDrawerBookingForm() {
+        const zone = DataStore.getZoneById(this.drawerZoneId);
+        const memberId = document.getElementById('currentMember').value;
+        const member = DataStore.getMemberById(memberId);
+
+        document.getElementById('drawerBookingZone').textContent = zone.name;
+
+        const slotSelect = document.getElementById('drawerTimeSlot');
+        slotSelect.innerHTML = '<option value="">请选择时段</option>';
+        DataStore.getTimeSlots().forEach(slot => {
+            const remaining = DataStore.getSlotCapacity(this.drawerZoneId, this.drawerDate, slot.id);
+            const option = document.createElement('option');
+            option.value = slot.id;
+            option.textContent = `${slot.time} (${slot.name}) - 剩余${remaining}人`;
+            if (remaining <= 0) {
+                option.disabled = true;
+                option.style.color = '#999';
+            }
+            if (this.drawerSlotId === slot.id) {
+                option.selected = true;
+            }
+            slotSelect.appendChild(option);
+        });
+
+        const equipSelect = document.getElementById('drawerEquipmentSize');
+        equipSelect.innerHTML = '<option value="">请选择</option>';
+        DataStore.getEquipment().forEach(e => {
+            const option = document.createElement('option');
+            option.value = e.id;
+            if (e.stock <= 0) {
+                option.textContent = `${e.name} ${e.size}码 - ❌ 库存不足 (0件)`;
+                option.disabled = true;
+                option.style.color = '#999';
+                option.style.background = '#f5f5f5';
+            } else if (e.stock === 1) {
+                option.textContent = `${e.name} ${e.size}码 - ⚠️ 仅剩1件`;
+                option.style.color = '#f39c12';
+            } else {
+                option.textContent = `${e.name} ${e.size}码 (库存: ${e.stock}件)`;
+            }
+            equipSelect.appendChild(option);
+        });
+
+        const guardianRow = document.getElementById('drawerGuardianRow');
+        if (member && member.isMinor) {
+            guardianRow.style.display = 'flex';
+            const consent = DataStore.getGuardianConsent(memberId);
+            document.getElementById('drawerGuardianConfirm').value = consent && consent.confirmed ? 'true' : 'false';
+        } else {
+            guardianRow.style.display = 'none';
+        }
+
+        document.getElementById('drawerBookingResult').style.display = 'none';
+    },
+
+    renderDrawerWaitlistOptions() {
+        const slotSelect = document.getElementById('drawerWaitlistSlot');
+        slotSelect.innerHTML = '<option value="">请选择时段</option>';
+        DataStore.getTimeSlots().forEach(slot => {
+            const option = document.createElement('option');
+            option.value = slot.id;
+            option.textContent = `${slot.time} (${slot.name})`;
+            if (this.drawerSlotId === slot.id) {
+                option.selected = true;
+            }
+            slotSelect.appendChild(option);
+        });
+    },
+
+    renderDrawerWaitlist() {
+        const slotId = document.getElementById('drawerWaitlistSlot').value;
+        const listContainer = document.getElementById('drawerWaitlistList');
+
+        if (!slotId) {
+            listContainer.innerHTML = '<p style="color:#999;">请选择时段查看候补名单</p>';
+            return;
+        }
+
+        const waitlist = DataStore.getWaitlistByZoneAndDate(this.drawerZoneId, this.drawerDate, slotId);
+
+        if (waitlist.length === 0) {
+            listContainer.innerHTML = '<p style="color:#999;">该时段暂无候补</p>';
+            return;
+        }
+
+        let html = '';
+        waitlist.forEach((item, idx) => {
+            const member = DataStore.getMemberById(item.memberId);
+            html += `
+                <div class="waitlist-item-drawer">
+                    <span class="member-name">${member ? member.name : '未知会员'}</span>
+                    <span class="position">第${idx + 1}位</span>
+                </div>
+            `;
+        });
+
+        listContainer.innerHTML = html;
+    },
+
+    renderDrawerCheckinOptions() {
+        const bookingSelect = document.getElementById('drawerCheckinBooking');
+        bookingSelect.innerHTML = '<option value="">请选择预约记录</option>';
+        
+        const bookings = DataStore.getBookings()
+            .filter(b => b.status === 'confirmed' && b.zoneId === this.drawerZoneId);
+        
+        bookings.forEach(b => {
+            const member = DataStore.getMemberById(b.memberId);
+            const slot = DataStore.getTimeSlotById(b.slotId);
+            const currentMemberId = document.getElementById('currentMember').value;
+            if (b.memberId === currentMemberId) {
+                const option = document.createElement('option');
+                option.value = b.id;
+                option.textContent = `${b.date} ${slot ? slot.time : ''}`;
+                bookingSelect.appendChild(option);
+            }
+        });
+
+        document.getElementById('drawerCheckinResult').style.display = 'none';
+    },
+
+    submitDrawerBooking() {
+        const memberId = document.getElementById('currentMember').value;
+        const equipmentId = document.getElementById('drawerEquipmentSize').value;
+        const trainingLevel = document.getElementById('drawerTrainingLevel').value;
+        const guardianConfirm = document.getElementById('drawerGuardianConfirm').value === 'true';
+        const slotId = document.getElementById('drawerTimeSlot').value;
+
+        if (!memberId || !slotId || !trainingLevel) {
+            this.showDrawerResult('drawerBookingResult', '请完善预约信息（时段、培训等级）', 'error');
+            return;
+        }
+
+        this.selectedZoneId = this.drawerZoneId;
+        this.selectedDate = this.drawerDate;
+        this.selectedSlotId = slotId;
+
+        const member = DataStore.getMemberById(memberId);
+        if (member.isMinor && guardianConfirm) {
+            const existing = DataStore.getGuardianConsent(memberId);
+            if (!existing || !existing.confirmed) {
+                DataStore.saveGuardianConsent({
+                    memberId,
+                    guardianName: '系统默认监护人',
+                    guardianPhone: member.phone,
+                    confirmed: true,
+                    confirmDate: this.formatDateISO(new Date())
+                });
+            }
+        }
+
+        const context = {
+            memberId,
+            zoneId: this.drawerZoneId,
+            date: this.drawerDate,
+            slotId,
+            equipmentId
+        };
+
+        const validation = RulesEngine.validateBooking(context);
+
+        if (!validation.passed) {
+            RulesEngine.showRuleModal(validation.results, () => {});
+            return;
+        }
+
+        if (validation.hasWarnings) {
+            RulesEngine.showRuleModal(validation.results, (confirmed) => {
+                if (confirmed) {
+                    this.doCreateDrawerBooking(memberId, equipmentId, trainingLevel);
+                }
+            });
+        } else {
+            this.doCreateDrawerBooking(memberId, equipmentId, trainingLevel);
+        }
+    },
+
+    doCreateDrawerBooking(memberId, equipmentId, trainingLevel) {
+        if (equipmentId) {
+            DataStore.updateEquipmentStock(equipmentId, -1);
+        }
+
+        const booking = DataStore.createBooking({
+            memberId,
+            zoneId: this.drawerZoneId,
+            date: this.drawerDate,
+            slotId: this.drawerSlotId,
+            equipmentId,
+            trainingLevel
+        });
+
+        this.renderCalendar();
+        this.renderZoneInfo();
+        this.renderDrawerBookingForm();
+        this.showDrawerResult('drawerBookingResult', '✅ 预约成功！祝您攀岩愉快！', 'success');
+    },
+
+    addDrawerWaitlist() {
+        const memberId = document.getElementById('currentMember').value;
+        const slotId = document.getElementById('drawerWaitlistSlot').value;
+
+        if (!memberId || !slotId) {
+            this.showDrawerResult('drawerWaitlistResult', '请先选择时段', 'error');
+            return;
+        }
+
+        const item = DataStore.addToWaitlist({
+            memberId,
+            zoneId: this.drawerZoneId,
+            date: this.drawerDate,
+            slotId
+        });
+
+        this.renderDrawerWaitlist();
+        this.renderCalendar();
+        this.showDrawerResult('drawerWaitlistResult', `已加入候补名单，当前排位第${item.position}位`, 'success');
+    },
+
+    doDrawerCheckin() {
+        const bookingId = document.getElementById('drawerCheckinBooking').value;
+        if (!bookingId) {
+            this.showDrawerResult('drawerCheckinResult', '请选择预约记录', 'error');
+            return;
+        }
+
+        const booking = DataStore.getBookingById(bookingId);
+        if (!booking) {
+            this.showDrawerResult('drawerCheckinResult', '预约记录不存在', 'error');
+            return;
+        }
+
+        DataStore.updateBookingStatus(bookingId, 'checkedin');
+
+        const checkin = DataStore.createCheckin({
+            memberId: booking.memberId,
+            bookingId,
+            zoneId: booking.zoneId,
+            slotId: booking.slotId
+        });
+
+        this.renderDrawerCheckinOptions();
+        this.showDrawerResult('drawerCheckinResult', '入场核验成功！', 'success');
+    },
+
+    showDrawerResult(elementId, message, type) {
+        const el = document.getElementById(elementId);
+        el.textContent = message;
+        el.className = `result-message ${type}`;
     }
 };
+
+function closeZoneDrawer() {
+    document.getElementById('zoneDrawerOverlay').style.display = 'none';
+    document.body.style.overflow = '';
+    window.scrollTo(0, App.previousScrollPosition);
+    App.drawerZoneId = null;
+    App.drawerDate = null;
+    App.drawerSlotId = null;
+}
 
 function runSelfCheck() {
     const modal = document.getElementById('selfCheckModal');
