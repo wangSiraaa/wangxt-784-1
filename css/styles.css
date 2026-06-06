@@ -710,3 +710,160 @@ body {
         flex-direction: column;
     }
 }
+
+
+/* CLIMB784 CUSTOM STYLES */
+select option:disabled {
+    color: #999 !important;
+    background-color: #f0f0f0 !important;
+    cursor: not-allowed !important;
+    opacity: 0.6;
+}
+
+.self-check-btn {
+    background: linear-gradient(135deg, #f39c12 0%, #e74c3c 100%);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-weight: 600;
+    cursor: pointer;
+    animation: btnPulse 2s infinite;
+}
+
+@keyframes btnPulse {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(243, 156, 18, 0.7);
+    }
+    50% {
+        box-shadow: 0 0 0 8px rgba(243, 156, 18, 0);
+    }
+}
+
+.self-check-btn:hover {
+    transform: scale(1.05);
+}
+
+.result-message.success {
+    animation: successPulse 0.6s ease-out;
+    box-shadow: 0 0 0 4px rgba(40, 167, 69, 0.2);
+    font-weight: 600;
+    font-size: 16px;
+    padding: 16px;
+    border-radius: 8px;
+}
+
+@keyframes successPulse {
+    0% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7);
+    }
+    50% {
+        transform: scale(1.02);
+        box-shadow: 0 0 0 10px rgba(40, 167, 69, 0);
+    }
+    100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 4px rgba(40, 167, 69, 0.2);
+    }
+}
+
+.booking-success-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.booking-success-card {
+    background: white;
+    border-radius: 15px;
+    padding: 40px;
+    text-align: center;
+    animation: slideUp 0.4s ease;
+    max-width: 400px;
+    width: 90%;
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(30px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.booking-success-card .success-icon {
+    width: 80px;
+    height: 80px;
+    background: #27ae60;
+    border-radius: 50%;
+    margin: 0 auto 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 40px;
+    color: white;
+    animation: checkmarkBounce 0.6s ease;
+}
+
+@keyframes checkmarkBounce {
+    0% { transform: scale(0); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+}
+
+.booking-success-card h3 {
+    color: #2c3e50;
+    font-size: 24px;
+    margin-bottom: 10px;
+}
+
+.booking-success-card p {
+    color: #666;
+    margin-bottom: 20px;
+}
+
+.self-check-item {
+    padding: 12px;
+    margin-bottom: 8px;
+    border-radius: 8px;
+    border-left: 4px solid;
+}
+
+.self-check-item.pass {
+    background: #d4edda;
+    border-color: #27ae60;
+    color: #155724;
+}
+
+.self-check-item.fail {
+    background: #f8d7da;
+    border-color: #e74c3c;
+    color: #721c24;
+}
+
+.self-check-item .check-title {
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.self-check-item .check-desc {
+    font-size: 13px;
+    opacity: 0.9;
+}

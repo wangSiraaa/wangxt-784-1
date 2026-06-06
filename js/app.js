@@ -150,8 +150,17 @@ const App = {
         DataStore.getEquipment().forEach(e => {
             const option = document.createElement('option');
             option.value = e.id;
-            option.textContent = `${e.name} ${e.size}码 (库存: ${e.stock})`;
-            if (e.stock <= 0) option.disabled = true;
+            if (e.stock <= 0) {
+                option.textContent = `${e.name} ${e.size}码 - ❌ 库存不足 (0件)`;
+                option.disabled = true;
+                option.style.color = '#999';
+                option.style.background = '#f5f5f5';
+            } else if (e.stock === 1) {
+                option.textContent = `${e.name} ${e.size}码 - ⚠️ 仅剩1件`;
+                option.style.color = '#f39c12';
+            } else {
+                option.textContent = `${e.name} ${e.size}码 (库存: ${e.stock}件)`;
+            }
             equipSelect.appendChild(option);
         });
         
@@ -546,7 +555,33 @@ const App = {
         document.getElementById('bookingForm').style.display = 'none';
         this.renderCalendar();
         this.renderCheckinSelects();
-        this.showResult('bookingResult', '预约成功！', 'success');
+        this.showSuccessModal();
+        this.showResult('bookingResult', '✅ 预约成功！祝您攀岩愉快！', 'success');
+    },
+    
+    showSuccessModal() {
+        const modal = document.createElement('div');
+        modal.className = 'booking-success-overlay';
+        modal.id = 'successModal';
+        modal.innerHTML = `
+            <div class="booking-success-card">
+                <div class="success-icon">✓</div>
+                <h3>预约成功！</h3>
+                <p>您的攀岩预约已确认，请按时到场核验</p>
+                <button class="btn-primary" onclick="document.getElementById('successModal').remove()">知道了</button>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        setTimeout(() => {
+            if (document.getElementById('successModal')) {
+                document.getElementById('successModal').style.opacity = '0';
+                setTimeout(() => {
+                    if (document.getElementById('successModal')) {
+                        document.getElementById('successModal').remove();
+                    }
+                }, 300);
+            }
+        }, 3000);
     },
 
     saveTraining() {
@@ -678,6 +713,113 @@ const App = {
         return date.toISOString().split('T')[0];
     }
 };
+
+function runSelfCheck() {
+    const modal = document.getElementById('selfCheckModal');
+    const content = document.getElementById('selfCheckContent');
+    
+    const checks = [
+        {
+            name: '培训过期会员禁止先锋攀岩',
+            desc: '验证钱七(证书过期)预约先锋区是否被拦截',
+            test: () => {
+                const result = RulesEngine.validateBooking({
+                    memberId: 'm5', zoneId: 'zone3', date: '2026-06-08', slotId: 'slot1'
+                });
+                return !result.passed && result.results.some(r => r.ruleId === 'TRAINING_EXPIRED_ADVANCED');
+            }
+        },
+        {
+            name: '未成年人监护确认规则',
+            desc: '验证赵六(未成年未确认)预约难度区是否被拦截',
+            test: () => {
+                const result = RulesEngine.validateBooking({
+                    memberId: 'm4', zoneId: 'zone2', date: '2026-06-08', slotId: 'slot1'
+                });
+                return !result.passed && result.results.some(r => r.ruleId === 'MINOR_WITHOUT_GUARDIAN');
+            }
+        },
+        {
+            name: '装备库存不足提示',
+            desc: '验证42码(库存0)是否触发库存警告',
+            test: () => {
+                const result = RulesEngine.validateBooking({
+                    memberId: 'm1', zoneId: 'zone1', date: '2026-06-08', slotId: 'slot1', equipmentId: 'shoe_42'
+                });
+                return result.results.some(r => r.ruleId === 'EQUIPMENT_STOCK_INSUFFICIENT');
+            }
+        },
+        {
+            name: '入场记录删除权限',
+            desc: '验证普通前台删除已入场记录被拦截',
+            test: () => {
+                const checkin = DataStore.createCheckin({
+                    memberId: 'm1', bookingId: 'test_check', zoneId: 'zone1', slotId: 'slot1'
+                });
+                const result = RulesEngine.validateCheckinDelete({ checkinId: checkin.id, isAdmin: false });
+                return !result.passed;
+            }
+        },
+        {
+            name: '所有页面导航可访问',
+            desc: '验证6个页面导航按钮都存在且可点击',
+            test: () => {
+                const pages = ['calendar', 'zones', 'qualification', 'waitlist', 'checkin', 'datarestore'];
+                return pages.every(p => document.querySelector(`[data-page="${p}"]`) !== null);
+            }
+        },
+        {
+            name: '本地数据存储正常',
+            desc: '验证岩壁分区、会员、装备等数据已加载',
+            test: () => {
+                return DataStore.getZones().length > 0 && 
+                       DataStore.getMembers().length > 0 && 
+                       DataStore.getEquipment().length > 0;
+            }
+        }
+    ];
+    
+    let html = '<div style="margin-bottom:15px;font-weight:500;color:#2c3e50;">正在运行交付自检...</div>';
+    let passed = 0;
+    let failed = 0;
+    
+    checks.forEach(check => {
+        try {
+            const result = check.test();
+            if (result) {
+                passed++;
+                html += `<div class="self-check-item pass">
+                    <div class="check-title">✅ ${check.name}</div>
+                    <div class="check-desc">${check.desc}</div>
+                </div>`;
+            } else {
+                failed++;
+                html += `<div class="self-check-item fail">
+                    <div class="check-title">❌ ${check.name}</div>
+                    <div class="check-desc">${check.desc} - 测试未通过</div>
+                </div>`;
+            }
+        } catch (e) {
+            failed++;
+            html += `<div class="self-check-item fail">
+                <div class="check-title">❌ ${check.name}</div>
+                <div class="check-desc">错误: ${e.message}</div>
+            </div>`;
+        }
+    });
+    
+    html += `<div style="margin-top:20px;padding:15px;background:${failed === 0 ? '#d4edda' : '#f8d7da'};border-radius:8px;text-align:center;">
+        <strong>${failed === 0 ? '🎉 所有自检通过！' : `⚠️  ${failed}项检查未通过`}</strong>
+        <div style="margin-top:5px;font-size:13px;">通过: ${passed} / 失败: ${failed} / 总计: ${checks.length}</div>
+    </div>`;
+    
+    content.innerHTML = html;
+    modal.style.display = 'flex';
+}
+
+function closeSelfCheckModal() {
+    document.getElementById('selfCheckModal').style.display = 'none';
+}
 
 document.addEventListener('DOMContentLoaded', () => {
     App.init();

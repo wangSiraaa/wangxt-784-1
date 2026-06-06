@@ -9,7 +9,10 @@
 <body>
     <div class="app-container">
         <header class="app-header">
-            <h1>🧗 攀岩馆安全培训与入场预约系统</h1>
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+                <h1>🧗 攀岩馆安全培训与入场预约系统</h1>
+                <button class="self-check-btn" onclick="runSelfCheck()">🔍 交付自检</button>
+            </div>
             <nav class="nav-tabs">
                 <button class="nav-btn active" data-page="calendar">预约日历</button>
                 <button class="nav-btn" data-page="zones">分区详情</button>
@@ -207,6 +210,19 @@
                 <div class="modal-body" id="ruleContent"></div>
                 <div class="modal-footer">
                     <button id="ruleActionBtn" class="btn-primary">知道了</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="selfCheckModal" class="modal" style="display:none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>🔍 交付自检报告</h3>
+                    <button class="close-modal" onclick="closeSelfCheckModal()">&times;</button>
+                </div>
+                <div class="modal-body" id="selfCheckContent"></div>
+                <div class="modal-footer">
+                    <button class="btn-primary" onclick="closeSelfCheckModal()">关闭</button>
                 </div>
             </div>
         </div>
