@@ -1,0 +1,9 @@
+version: '3.8'
+
+services:
+  climbing-gym:
+    build: .
+    ports:
+      - "8080:80"
+    container_name: climbing-gym-app
+    restart: unless-stopped

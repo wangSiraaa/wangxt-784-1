@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>攀岩馆安全培训与入场预约系统</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <header class="app-header">
+            <h1>🧗 攀岩馆安全培训与入场预约系统</h1>
+            <nav class="nav-tabs">
+                <button class="nav-btn active" data-page="calendar">预约日历</button>
+                <button class="nav-btn" data-page="zones">分区详情</button>
+                <button class="nav-btn" data-page="qualification">安全资格卡</button>
+                <button class="nav-btn" data-page="waitlist">候补名单</button>
+                <button class="nav-btn" data-page="checkin">入场核验</button>
+                <button class="nav-btn" data-page="datarestore">数据恢复</button>
+            </nav>
+        </header>
+
+        <main class="app-main">
+            <div id="page-calendar" class="page active">
+                <div class="page-header">
+                    <h2>📅 预约日历</h2>
+                    <div class="member-selector">
+                        <label>当前会员：</label>
+                        <select id="currentMember">
+                            <option value="">请选择会员</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="calendar-container">
+                    <div class="calendar-header">
+                        <button id="prevWeek">◀ 上周</button>
+                        <h3 id="currentWeekRange"></h3>
+                        <button id="nextWeek">下周 ▶</button>
+                    </div>
+                    <div id="calendarGrid" class="calendar-grid"></div>
+                </div>
+                <div class="booking-form" id="bookingForm" style="display:none;">
+                    <h3>预约详情</h3>
+                    <div class="form-row">
+                        <label>岩壁分区：</label>
+                        <span id="bookingZone"></span>
+                    </div>
+                    <div class="form-row">
+                        <label>时段：</label>
+                        <span id="bookingTime"></span>
+                    </div>
+                    <div class="form-row">
+                        <label>装备尺码：</label>
+                        <select id="equipmentSize">
+                            <option value="">请选择</option>
+                        </select>
+                    </div>
+                    <div class="form-row">
+                        <label>培训等级：</label>
+                        <select id="trainingLevel">
+                            <option value="">请选择</option>
+                            <option value="beginner">初级（体验区）</option>
+                            <option value="intermediate">中级（难度区）</option>
+                            <option value="advanced">高级（先锋区）</option>
+                        </select>
+                    </div>
+                    <div class="form-row" id="guardianRow" style="display:none;">
+                        <label>监护人确认：</label>
+                        <select id="guardianConfirm">
+                            <option value="false">未确认</option>
+                            <option value="true">已确认</option>
+                        </select>
+                    </div>
+                    <div class="form-actions">
+                        <button id="submitBooking" class="btn-primary">提交预约</button>
+                        <button id="cancelBooking" class="btn-secondary">取消</button>
+                    </div>
+                    <div id="bookingResult" class="result-message"></div>
+                </div>
+            </div>
+
+            <div id="page-zones" class="page">
+                <div class="page-header">
+                    <h2>🧗 岩壁分区详情</h2>
+                </div>
+                <div id="zonesList" class="zones-list"></div>
+            </div>
+
+            <div id="page-qualification" class="page">
+                <div class="page-header">
+                    <h2>🎫 安全资格卡</h2>
+                    <div class="member-selector">
+                        <label>查询会员：</label>
+                        <select id="qualMember">
+                            <option value="">请选择会员</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="qualificationCard" class="qualification-card"></div>
+                <div class="training-records">
+                    <h3>培训记录维护（教练）</h3>
+                    <div class="form-row">
+                        <label>会员：</label>
+                        <select id="trainMember">
+                            <option value="">请选择</option>
+                        </select>
+                    </div>
+                    <div class="form-row">
+                        <label>培训等级：</label>
+                        <select id="trainLevel">
+                            <option value="beginner">初级</option>
+                            <option value="intermediate">中级</option>
+                            <option value="advanced">高级</option>
+                        </select>
+                    </div>
+                    <div class="form-row">
+                        <label>有效期至：</label>
+                        <input type="date" id="trainExpire">
+                    </div>
+                    <div class="form-actions">
+                        <button id="saveTraining" class="btn-primary">保存培训记录</button>
+                    </div>
+                    <div id="trainResult" class="result-message"></div>
+                </div>
+            </div>
+
+            <div id="page-waitlist" class="page">
+                <div class="page-header">
+                    <h2>📋 候补名单</h2>
+                </div>
+                <div id="waitlistContainer" class="waitlist-container"></div>
+            </div>
+
+            <div id="page-checkin" class="page">
+                <div class="page-header">
+                    <h2>✅ 入场核验</h2>
+                    <div class="role-selector">
+                        <label>当前角色：</label>
+                        <select id="currentRole">
+                            <option value="reception">前台</option>
+                            <option value="admin">管理员</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="checkin-section">
+                    <h3>预约核验</h3>
+                    <div class="form-row">
+                        <label>选择预约：</label>
+                        <select id="checkinBooking">
+                            <option value="">请选择预约记录</option>
+                        </select>
+                    </div>
+                    <div class="form-actions">
+                        <button id="doCheckin" class="btn-primary">确认入场</button>
+                    </div>
+                    <div id="checkinResult" class="result-message"></div>
+                </div>
+                <div class="temp-change-section">
+                    <h3>临时换线（前台）</h3>
+                    <div class="form-row">
+                        <label>入场记录：</label>
+                        <select id="changeCheckin">
+                            <option value="">请选择入场记录</option>
+                        </select>
+                    </div>
+                    <div class="form-row">
+                        <label>新分区：</label>
+                        <select id="newZone">
+                            <option value="">请选择</option>
+                        </select>
+                    </div>
+                    <div class="form-actions">
+                        <button id="doTempChange" class="btn-primary">执行换线</button>
+                    </div>
+                    <div id="changeResult" class="result-message"></div>
+                </div>
+                <div class="checkin-records">
+                    <h3>入场记录</h3>
+                    <div id="checkinRecords" class="records-list"></div>
+                </div>
+            </div>
+
+            <div id="page-datarestore" class="page">
+                <div class="page-header">
+                    <h2>💾 本地数据管理</h2>
+                </div>
+                <div class="data-actions">
+                    <button id="exportData" class="btn-primary">导出所有数据</button>
+                    <button id="importDataBtn" class="btn-secondary">导入数据</button>
+                    <input type="file" id="importData" accept=".json" style="display:none;">
+                    <button id="resetData" class="btn-danger">重置为示例数据</button>
+                </div>
+                <div class="data-preview">
+                    <h3>当前本地数据概览</h3>
+                    <div id="dataOverview"></div>
+                </div>
+                <div id="restoreResult" class="result-message"></div>
+            </div>
+        </main>
+
+        <div id="ruleModal" class="modal" style="display:none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 id="ruleTitle">⚠️ 风险校验提示</h3>
+                    <button class="close-modal" onclick="closeRuleModal()">&times;</button>
+                </div>
+                <div class="modal-body" id="ruleContent"></div>
+                <div class="modal-footer">
+                    <button id="ruleActionBtn" class="btn-primary">知道了</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/dataStore.js"></script>
+    <script src="js/rulesEngine.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
